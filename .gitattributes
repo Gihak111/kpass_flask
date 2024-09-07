@@ -1,0 +1,5 @@
+*.keras filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.bert_scam_classifier filter=lfs diff=lfs merge=lfs -text
+bert_scam_classifier/** filter=lfs diff=lfs merge=lfs -text
+bert_scam_classifier filter=lfs diff=lfs merge=lfs -text
