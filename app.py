@@ -5,19 +5,24 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
-import cv2
 
 app = Flask(__name__)
 
-# 모델 경로 설정
-bert_model_path = 'model/bert_scam_classifier'
-autoencoder_model_path = 'model/autoencoder_model.keras'
-
 # BERT 모델과 토크나이저 로드
-bert_model = BertForSequenceClassification.from_pretrained(bert_model_path)
-bert_tokenizer = BertTokenizer.from_pretrained(bert_model_path)
+bert_model_name = "gihakkk/bert_scam_classifier"
+bert_tokenizer = BertTokenizer.from_pretrained(bert_model_name)
+bert_model = BertForSequenceClassification.from_pretrained(bert_model_name)
 
-# Autoencoder 모델 로드
+# Autoencoder 모델 다운로드 및 로드
+autoencoder_model_url = "https://huggingface.co/gihakkk/autoencoder_model.keras/resolve/main/autoencoder_model.keras"
+autoencoder_model_path = "autoencoder_model.keras"
+
+# 모델 파일 다운로드
+response = requests.get(autoencoder_model_url)
+with open(autoencoder_model_path, "wb") as f:
+    f.write(response.content)
+
+# TensorFlow 모델 로드
 autoencoder = tf.keras.models.load_model(autoencoder_model_path)
 
 def predict(text):
@@ -28,17 +33,6 @@ def predict(text):
     logits = outputs.logits
     prediction = torch.argmax(logits, dim=1).item()
     return prediction
-
-def calculate_psnr(original, reconstructed):
-    # 원본 이미지와 복원된 이미지의 PSNR 값을 계산
-    original = (original[0] * 255.0).astype(np.uint8)
-    reconstructed = (reconstructed[0] * 255.0).astype(np.uint8)
-    
-    if original.shape != reconstructed.shape:
-        raise ValueError("Original and reconstructed images have different shapes")
-    
-    psnr_value = cv2.PSNR(original, reconstructed)
-    return psnr_value
 
 def preprocess_image(image):
     # 이미지를 전처리하여 모델 입력 형식에 맞추기
@@ -68,21 +62,25 @@ def analyze_image():
     img_array = preprocess_image(image)
     reconstructed_img = autoencoder.predict(img_array)
     
-    try:
-        # 원본 이미지와 복원된 이미지의 차원 변환 (예시: 4D 배열을 3D 배열로 변환)
-        img_array = img_array.squeeze()  # (1, height, width, channels) -> (height, width, channels)
-        reconstructed_img = reconstructed_img.squeeze()
-        
-        psnr_value = calculate_psnr(img_array, reconstructed_img)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 500
+    # PSNR 계산 (직접 계산으로 대체)
+    original = (img_array[0] * 255.0).astype(np.uint8)
+    reconstructed = (reconstructed_img[0] * 255.0).astype(np.uint8)
+    
+    # PSNR 계산 함수 직접 구현
+    def psnr(img1, img2):
+        mse = np.mean((img1 - img2) ** 2)
+        if mse == 0:
+            return float('inf')
+        max_pixel = 255.0
+        return 20 * np.log10(max_pixel / np.sqrt(mse))
+    
+    psnr_value = psnr(original, reconstructed)
 
     if psnr_value > 18:
         return jsonify({"message": "The image is likely a genital image.", "psnr": psnr_value})
     else:
         return jsonify({"message": "The image is not a genital image.", "psnr": psnr_value})
 
-# Hello World 라우트 추가
 @app.route('/hello', methods=['GET'])
 def hello_world():
     return jsonify({'message': 'Hello World!'})

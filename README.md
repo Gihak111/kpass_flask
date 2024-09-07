@@ -50,4 +50,3 @@ gunicorn -b 0.0.0.0:5000 app:app
 ## 📄 License
 
 [BSD 3-Clause](https://github.com/pallets/flask/blob/main/LICENSE.rst)
-

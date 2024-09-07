@@ -1,6 +1,5 @@
 Flask==2.2.2
 tensorflow
 Pillow
-opencv-python
 transformers
 torch
